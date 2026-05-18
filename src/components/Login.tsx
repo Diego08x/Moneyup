@@ -57,89 +57,127 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-6 text-slate-100 font-sans">
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-md"
-      >
-        <div className="flex flex-col items-center mb-12">
-          <motion.div 
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ type: "spring", damping: 12 }}
-            className="w-20 h-20 bg-indigo-600 rounded-3xl flex items-center justify-center shadow-2xl shadow-indigo-500/40 mb-6"
-          >
-            <TrendingUp size={40} className="text-white" />
-          </motion.div>
-          <h1 className="text-5xl font-black italic text-white tracking-tighter mb-2">
-            Money<span className="text-indigo-400">Up</span>
-          </h1>
-          <p className="text-slate-500 font-medium text-center">
-            Dashboard Financiero Pro
-          </p>
-        </div>
+    <div className="relative min-h-screen w-full flex items-center justify-center overflow-hidden font-sans">
+      {/* Background Video Layer */}
+      <div className="absolute inset-0 z-0">
+        <div className="absolute inset-0 bg-slate-950/70 z-10 backdrop-blur-[2px]" />
+        <video
+          autoPlay
+          loop
+          muted
+          playsInline
+          className="w-full h-full object-cover"
+        >
+          <source 
+            src="https://assets.mixkit.co/videos/preview/mixkit-abstract-technology-vj-loop-background-30232-large.mp4" 
+            type="video/mp4" 
+          />
+        </video>
+      </div>
 
-        <div className="bg-slate-900 border border-slate-800 rounded-[2.5rem] p-10 shadow-2xl space-y-8 relative overflow-hidden">
-          <div className="relative z-10">
-            <h2 className="text-2xl font-bold text-center mb-2">Bienvenido</h2>
-            <p className="text-slate-500 text-sm text-center mb-8">Accede para sincronizar tus finanzas.</p>
+      {/* Decorative Orbs */}
+      <div className="absolute top-1/4 -left-20 w-80 h-80 bg-indigo-500/20 rounded-full blur-[120px] animate-pulse" />
+      <div className="absolute bottom-1/4 -right-20 w-80 h-80 bg-emerald-500/10 rounded-full blur-[120px] animate-pulse delay-700" />
+
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.9 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
+        className="relative z-20 w-full max-w-[460px] px-6"
+      >
+        <div className="bg-white/[0.03] backdrop-blur-3xl border border-white/10 rounded-[40px] p-10 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.6)] overflow-hidden">
+          {/* Top Branding Section */}
+          <div className="mb-12">
+            <motion.div
+              initial={{ scale: 0.5, opacity: 0, rotate: -20 }}
+              animate={{ scale: 1, opacity: 1, rotate: 0 }}
+              transition={{ delay: 0.2, type: "spring" }}
+              className="w-20 h-20 bg-gradient-to-br from-indigo-500 to-emerald-500 rounded-3xl flex items-center justify-center mb-8 mx-auto shadow-2xl shadow-indigo-500/40 ring-1 ring-white/20"
+            >
+              <TrendingUp className="text-white w-10 h-10" />
+            </motion.div>
+            
+            <h1 className="text-5xl font-black text-center tracking-tighter text-white mb-3 italic">
+              Money<span className="text-indigo-400">Up</span>
+            </h1>
+            <p className="text-slate-400 font-bold text-center text-[10px] tracking-[0.3em] uppercase">
+              Control Financiero Inteligente
+            </p>
+          </div>
+
+          <div className="relative z-10 space-y-8">
+            <div className="text-center">
+              <h2 className="text-2xl font-bold text-white mb-2">Bienvenido</h2>
+              <p className="text-slate-500 text-sm">Gestiona tus finanzas con el poder de la IA.</p>
+            </div>
             
             {error && (
               <motion.div 
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                className="bg-rose-500/10 border border-rose-500/20 text-rose-400 p-4 rounded-2xl text-xs font-bold mb-6 text-left"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-rose-500/10 border border-rose-500/20 text-rose-400 p-5 rounded-3xl text-sm font-medium text-left ring-1 ring-rose-500/30"
               >
-                <div className="mb-2 font-black">UPS! ALGO SALIÓ MAL</div>
-                {error}
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-2 h-2 rounded-full bg-rose-500 animate-ping" />
+                  <span className="font-black tracking-widest text-[10px] uppercase">Aviso de Sistema</span>
+                </div>
+                <p className="leading-tight text-xs opacity-90">{error}</p>
                 <button 
                   onClick={openInNewTab}
-                  className="mt-3 block w-full bg-rose-500 text-white py-2 rounded-xl text-[10px] hover:bg-rose-600 transition-colors"
+                  className="mt-4 block w-full bg-rose-500 hover:bg-rose-600 text-white py-3 rounded-2xl text-[10px] font-black transition-all active:scale-95 uppercase tracking-widest"
                 >
-                  ABRIR EN NUEVA PESTAÑA
+                  Continuar en Ventana Nueva
                 </button>
               </motion.div>
             )}
 
-            <button 
+            <motion.button 
+              whileHover={{ scale: 1.02, y: -2 }}
+              whileTap={{ scale: 0.98 }}
               onClick={handleLogin}
               disabled={isLoading}
-              className="w-full bg-white text-slate-950 py-4 rounded-2xl font-black flex items-center justify-center gap-3 hover:bg-slate-200 transition-all active:scale-95 shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full relative group"
             >
-              {isLoading ? (
-                <motion.div 
-                  animate={{ rotate: 360 }}
-                  transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                  className="w-5 h-5 border-2 border-slate-950 border-t-transparent rounded-full"
-                />
-              ) : (
-                <>
-                  <img src="https://www.google.com/favicon.ico" alt="Google" className="w-5 h-5" />
-                  ACCEDER CON MI CUENTA
-                </>
-              )}
-            </button>
+              <div className="absolute -inset-0.5 bg-gradient-to-r from-indigo-500 to-emerald-500 rounded-2xl blur opacity-30 group-hover:opacity-100 transition duration-1000 group-hover:duration-200"></div>
+              <div className="relative w-full bg-white text-slate-950 py-5 rounded-2xl font-black flex items-center justify-center gap-4 transition-all shadow-2xl disabled:opacity-50 disabled:cursor-not-allowed">
+                {isLoading ? (
+                  <motion.div 
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                    className="w-6 h-6 border-2 border-slate-950 border-t-transparent rounded-full"
+                  />
+                ) : (
+                  <>
+                    <img src="https://www.google.com/favicon.ico" alt="Google" className="w-5 h-5" />
+                    ACCEDER CON GOOGLE
+                  </>
+                )}
+              </div>
+            </motion.button>
             
             <button 
               onClick={() => window.location.reload()}
-              className="mt-4 w-full text-slate-500 text-[10px] uppercase font-bold hover:text-white transition-colors"
+              className="w-full text-slate-500 text-[10px] uppercase font-black tracking-widest hover:text-white transition-colors py-2"
             >
-              🔄 Forzar Recarga de Aplicación
+              🔄 Recargar Interfaz
             </button>
-            
-            <p className="mt-8 text-[10px] text-slate-600 text-center uppercase tracking-widest font-bold">
-              Seguridad de grado bancario AES-256
-            </p>
           </div>
           
-          <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-indigo-600/10 rounded-full blur-3xl"></div>
-          <div className="absolute -top-10 -left-10 w-40 h-40 bg-purple-600/10 rounded-full blur-3xl"></div>
+          <div className="mt-12 pt-8 border-t border-white/5 flex flex-col items-center">
+            <p className="text-[10px] text-slate-600 uppercase tracking-[0.2em] font-black italic">
+              Military-Grade Encryption
+            </p>
+            <div className="flex gap-4 mt-4 opacity-10 grayscale">
+              <div className="w-10 h-6 border border-white rounded-md" />
+              <div className="w-10 h-6 border border-white rounded-md" />
+              <div className="w-10 h-6 border border-white rounded-md" />
+            </div>
+          </div>
         </div>
-
-        <div className="mt-12 text-center text-slate-600 text-xs">
-          Al continuar, aceptas nuestros términos de servicio y políticas de privacidad.
-        </div>
+        
+        <p className="mt-10 text-center text-slate-500 text-[10px] font-bold tracking-widest uppercase opacity-50">
+          PRODUCIDO POR MONEYUP LTD. © 2024
+        </p>
       </motion.div>
     </div>
   );
