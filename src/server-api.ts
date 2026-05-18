@@ -7,18 +7,25 @@ dotenv.config();
 const app = express();
 app.use(express.json());
 
-const ai = new GoogleGenAI({
-  apiKey: process.env.GEMINI_API_KEY,
-  httpOptions: {
-    headers: {
-      'User-Agent': 'aistudio-build',
-    }
+const getAIClient = () => {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    throw new Error("No se encontró la API Key de Gemini. Por favor agrégala en Configuración > Secretos.");
   }
-});
+  return new GoogleGenAI({
+    apiKey,
+    httpOptions: {
+      headers: {
+        'User-Agent': 'aistudio-build',
+      }
+    }
+  });
+};
 
 // AI Advisor endpoint
 app.post("/api/advisor", async (req, res) => {
   try {
+    const ai = getAIClient();
     const { transactions, userProfile } = req.body;
     
     let transactionsContext = "";
@@ -54,47 +61,44 @@ app.post("/api/advisor", async (req, res) => {
       contents: prompt,
     });
 
-    res.json({ advice: response.text });
-  } catch (error) {
+    res.json({ advice: response.text || "No pude generar un consejo en este momento." });
+  } catch (error: any) {
     console.error("AI Advisor Error:", error);
-    res.status(500).json({ error: "Failed to get advice" });
+    res.status(500).json({ error: "Failed to get advice", details: error.message });
   }
 });
 
 // General Chat endpoint
 app.post("/api/chat", async (req, res) => {
   try {
+    const ai = getAIClient();
     const { messages, userProfile, transactions } = req.body;
 
     const lastMessage = messages[messages.length - 1].text;
-    
-    // Using a system instruction and history to give context
-    const response = await ai.models.generateContent({
+    const history = messages.slice(0, -1).map((m: any) => ({
+      role: m.role === 'user' ? 'user' : 'model',
+      parts: [{ text: m.text }]
+    }));
+
+    const chat = ai.chats.create({
       model: "gemini-3-flash-preview",
-      contents: [
-        {
-          role: "user",
-          parts: [{ text: `Eres "MoneyUp Advisor", un asistente financiero personal amigable. 
-          Usuario: ${userProfile.displayName || 'Usuario'}
-          Balance: $${userProfile.walletBalance}
-          Recientes: ${JSON.stringify(transactions.slice(0, 3))}
-          Responde de forma breve y motivadora.` }]
-        },
-        {
-          role: "model",
-          parts: [{ text: "¡Entendido! Soy tu MoneyUp Advisor. ¿En qué te puedo ayudar?" }]
-        },
-        ...messages.map((m: any) => ({
-          role: m.role === 'user' ? 'user' : 'model',
-          parts: [{ text: m.text }]
-        }))
-      ]
+      config: {
+        systemInstruction: `Eres "MoneyUp Advisor", un asistente financiero personal amigable y experto.
+        Datos del usuario actual:
+        - Nombre: ${userProfile.displayName || 'Mateo'}
+        - Balance: $${userProfile.walletBalance}
+        - Últimas transacciones: ${JSON.stringify(transactions.slice(0, 5))}
+        Responde de forma concisa, motivadora y en español. Usa emojis.`,
+      },
+      history: history
     });
 
-    res.json({ text: response.text });
-  } catch (error) {
+    const response = await chat.sendMessage({ message: lastMessage });
+
+    res.json({ text: response.text || "Perdona, no pude procesar eso. ¿Puedes repetirlo?" });
+  } catch (error: any) {
     console.error("Chat Error:", error);
-    res.status(500).json({ error: "Failed to chat" });
+    res.status(500).json({ error: "Error de comunicación", details: error.message });
   }
 });
 

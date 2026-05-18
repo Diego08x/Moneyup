@@ -97,8 +97,8 @@ const LEARN_TOPICS = [
 
 // --- Components ---
 
-const Card = ({ children, className, id }: { children: React.ReactNode, className?: string, id?: string }) => (
-  <div id={id} className={cn("bg-slate-900 border border-slate-800 rounded-[2rem] p-6 shadow-xl", className)}>
+const Card = ({ children, className, id, onClick }: { children: React.ReactNode, className?: string, id?: string, onClick?: () => void }) => (
+  <div id={id} onClick={onClick} className={cn("bg-slate-900 border border-slate-800 rounded-[2rem] p-6 shadow-xl", className)}>
     {children}
   </div>
 );
@@ -150,6 +150,8 @@ export default function App() {
       { id: '2', name: 'Viaje a Cancún', target: 2000000, current: 640000, color: 'from-purple-500 to-pink-500' }
     ];
   });
+
+  const [filterType, setFilterType] = useState<'all' | 'income' | 'expense'>('all');
 
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState('');
@@ -228,6 +230,44 @@ export default function App() {
     }
   };
 
+  const handleAddGoal = () => {
+    const name = prompt("Nombre de la meta:");
+    const target = prompt("Monto objetivo:");
+    if (!name || !target) return;
+
+    const newGoal: Goal = {
+      id: crypto.randomUUID(),
+      name,
+      target: parseFloat(target),
+      current: 0,
+      color: 'from-indigo-500 to-purple-500'
+    };
+    setGoals([...goals, newGoal]);
+  };
+
+  const handleDeleteGoal = (id: string) => {
+    if (confirm("¿Estás seguro de eliminar esta meta?")) {
+      setGoals(goals.filter(g => g.id !== id));
+    }
+  };
+
+  const handleUpdateGoal = (id: string) => {
+    const amount = prompt("Monto a sumar:");
+    if (!amount) return;
+
+    setGoals(goals.map(g => {
+      if (g.id === id) {
+        return { ...g, current: Math.min(g.target, g.current + parseFloat(amount)) };
+      }
+      return g;
+    }));
+  };
+
+  const filteredTransactions = transactions.filter(t => {
+    if (filterType === 'all') return true;
+    return t.type === filterType;
+  });
+
   const handleSendMessage = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!chatInput.trim() || isTyping) return;
@@ -247,11 +287,17 @@ export default function App() {
           transactions: transactions.slice(0, 10)
         })
       });
+      
       const data = await resp.json();
-      setChatMessages(prev => [...prev, { role: 'assistant', text: data.text }]);
-    } catch (err) {
+      
+      if (!resp.ok) {
+        throw new Error(data.details || data.error || "Error en el servidor");
+      }
+      
+      setChatMessages(prev => [...prev, { role: 'assistant', text: data.text || "No obtuve respuesta." }]);
+    } catch (err: any) {
       console.error(err);
-      setChatMessages(prev => [...prev, { role: 'assistant', text: "Hubo un error al conectar con Gemini." }]);
+      setChatMessages(prev => [...prev, { role: 'assistant', text: `Error: ${err.message || "Hubo un error al conectar con Gemini."}` }]);
     } finally {
       setIsTyping(false);
     }
@@ -302,9 +348,9 @@ export default function App() {
               className="bg-indigo-600 text-white px-5 py-2.5 rounded-xl flex items-center gap-2 hover:bg-indigo-500 transition-all active:scale-95 shadow-lg shadow-indigo-500/10 font-bold text-sm"
             >
               <Plus size={18} />
-              <span className="hidden sm:inline">Nuevo</span>
+              <span className="hidden sm:inline">Nuevo Movimiento</span>
             </button>
-            <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 border border-slate-800 hidden sm:block"></div>
+            <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 border border-slate-800 hidden sm:block cursor-pointer" onClick={() => alert("¡Hola, Mateo! Estás en la versión Pro.")}></div>
           </div>
         </div>
       </header>
@@ -374,9 +420,10 @@ export default function App() {
                   </Card>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <Card>
+                    <Card className="cursor-pointer hover:bg-slate-800 transition-colors" onClick={() => setActiveTab('metas')}>
                       <div className="flex items-center justify-between mb-6">
                         <h3 className="text-sm font-bold text-white uppercase tracking-wider">Metas de Ahorro</h3>
+                        <Plus size={14} className="text-indigo-400" />
                       </div>
                       <div className="space-y-6">
                         {goals.map(goal => (
@@ -396,6 +443,10 @@ export default function App() {
                     <Card>
                       <div className="flex items-center justify-between mb-6">
                         <h3 className="text-sm font-bold text-white uppercase tracking-wider">Últimos Movimientos</h3>
+                        <button 
+                          onClick={() => setActiveTab('movimientos')}
+                          className="text-[10px] text-indigo-400 font-bold hover:underline"
+                        >VER TODOS</button>
                       </div>
                       <div className="space-y-4">
                         {transactions.slice(0, 4).map((t) => (
@@ -483,7 +534,10 @@ export default function App() {
             >
               <div className="flex justify-between items-center">
                  <h2 className="text-3xl font-black text-white">Tus Metas</h2>
-                 <button className="bg-indigo-600 px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2">
+                 <button 
+                  onClick={handleAddGoal}
+                  className="bg-indigo-600 px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-indigo-500 transition-colors"
+                >
                    <Plus size={16} /> Nueva Meta
                  </button>
               </div>
@@ -492,24 +546,30 @@ export default function App() {
                 {goals.map(goal => (
                   <Card key={goal.id} className="group hover:border-indigo-500/50 transition-all duration-300">
                     <div className="flex justify-between items-start mb-6">
-                       <div className={cn("w-12 h-12 rounded-2xl bg-gradient-to-tr flex items-center justify-center text-white", goal.color)}>
-                         <TrendingUp size={24} />
+                       <div className={cn("w-12 h-12 rounded-2xl bg-gradient-to-tr flex items-center justify-center text-white text-xl", goal.color)}>
+                         🎯
                        </div>
-                       <button className="text-slate-600 hover:text-white transition-colors"><X size={16}/></button>
+                       <button onClick={() => handleDeleteGoal(goal.id)} className="text-slate-600 hover:text-rose-500 transition-colors"><X size={16}/></button>
                     </div>
                     <h3 className="text-xl font-bold text-white mb-2">{goal.name}</h3>
                     <div className="flex justify-between items-end mb-4">
-                       <p className="text-2xl font-black text-white">${goal.current.toLocaleString('es-CL')}</p>
-                       <p className="text-xs text-slate-500">objetivo: ${goal.target.toLocaleString('es-CL')}</p>
+                       <div>
+                         <p className="text-xs text-slate-500">Logrado</p>
+                         <p className="text-2xl font-black text-white">${goal.current.toLocaleString('es-CL')}</p>
+                       </div>
+                       <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">Meta: ${goal.target.toLocaleString('es-CL')}</p>
                     </div>
                     <div className="h-3 bg-slate-800 rounded-full overflow-hidden mb-6">
                        <motion.div 
                         initial={{ width: 0 }}
-                        animate={{ width: `${(goal.current/goal.target)*100}%` }}
+                        animate={{ width: `${Math.min(100, (goal.current/goal.target)*100)}%` }}
                         className={cn("h-full bg-gradient-to-r", goal.color)}
                        />
                     </div>
-                    <button className="w-full bg-slate-800 text-slate-300 py-3 rounded-xl font-bold text-sm hover:bg-slate-700 transition-colors">
+                    <button 
+                      onClick={() => handleUpdateGoal(goal.id)}
+                      className="w-full bg-indigo-600/10 text-indigo-400 py-3 rounded-xl font-bold text-sm hover:bg-indigo-600 hover:text-white transition-all border border-indigo-500/20"
+                    >
                       Sumar Ahorro
                     </button>
                   </Card>
@@ -529,10 +589,14 @@ export default function App() {
                 <div className="flex justify-between items-center mb-8">
                    <h2 className="text-2xl font-black text-white">Registro Completo</h2>
                    <div className="flex gap-4">
-                      <select className="bg-slate-800 text-xs px-3 py-2 rounded-lg border-none outline-none">
-                        <option>Todos los tipos</option>
-                        <option>Ingresos</option>
-                        <option>Gastos</option>
+                      <select 
+                        value={filterType}
+                        onChange={(e) => setFilterType(e.target.value as any)}
+                        className="bg-slate-800 text-xs px-3 py-2 rounded-lg border border-slate-700 outline-none text-white focus:ring-1 focus:ring-indigo-500"
+                      >
+                        <option value="all">Todos los tipos</option>
+                        <option value="income">Ingresos</option>
+                        <option value="expense">Gastos</option>
                       </select>
                    </div>
                 </div>
@@ -548,7 +612,7 @@ export default function App() {
                       </tr>
                     </thead>
                     <tbody className="text-sm">
-                      {transactions.map(t => (
+                      {filteredTransactions.map(t => (
                         <tr key={t.id} className="border-b border-slate-800/50 hover:bg-slate-800/20 group">
                           <td className="py-4 text-slate-400 font-mono">{new Date(t.date).toLocaleDateString()}</td>
                           <td className="py-4">
@@ -570,8 +634,8 @@ export default function App() {
                       ))}
                     </tbody>
                   </table>
-                  {transactions.length === 0 && (
-                    <div className="py-20 text-center text-slate-500">No hay movimientos aún.</div>
+                  {filteredTransactions.length === 0 && (
+                    <div className="py-20 text-center text-slate-500">No hay movimientos que coincidan.</div>
                   )}
                 </div>
               </Card>
@@ -593,12 +657,17 @@ export default function App() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                  {LEARN_TOPICS.map((topic, i) => (
-                   <Card key={i} className="flex gap-6 items-start group hover:bg-indigo-500/5 transition-colors">
+                   <Card key={i} className="flex gap-6 items-start group hover:bg-slate-800 transition-colors cursor-pointer" 
+                     onClick={() => {
+                       setActiveTab('dashboard');
+                       setChatInput(`Cuéntame más sobre ${topic.title}`);
+                     }}
+                   >
                      <div className="text-4xl">{topic.icon}</div>
                      <div>
                        <h3 className="text-xl font-bold text-white mb-2 group-hover:text-indigo-400 transition-colors">{topic.title}</h3>
                        <p className="text-sm text-slate-400 leading-relaxed">{topic.desc}</p>
-                       <button className="mt-4 text-xs font-bold text-indigo-400 hover:underline">LEER MÁS →</button>
+                       <button className="mt-4 text-xs font-bold text-indigo-400">PREGUNTAR A IA →</button>
                      </div>
                    </Card>
                  ))}
