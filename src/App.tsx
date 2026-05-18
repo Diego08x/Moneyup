@@ -166,33 +166,55 @@ export default function App() {
   const [newDesc, setNewDesc] = useState('');
 
   useEffect(() => {
-    // Listen to Supabase auth changes
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        setUser(session.user as any);
-      } else {
-        // Bypass login immediately for guest access as requested: "quiero que salga por ahora el inicio de una sin iniciar sesion"
-        const mockUser: any = {
+    console.log("App mounted, initializing auth...");
+    const initializeAuth = async () => {
+      try {
+        console.log("Fetching session...");
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (error) throw error;
+
+        if (session) {
+          console.log("Session found:", session.user.email);
+          setUser(session.user as any);
+        } else {
+          console.log("No session, using mock guest user");
+          setUser({
+            id: 'invitado_123',
+            user_metadata: {
+              full_name: 'Invitado',
+              avatar_url: 'https://cdn-icons-png.flaticon.com/512/149/149071.png'
+            },
+            email: 'invitado@moneyup.ai'
+          } as any);
+        }
+      } catch (err) {
+        console.error("Supabase auth error:", err);
+        setUser({
           id: 'invitado_123',
-          user_metadata: {
-            full_name: 'Invitado',
-            avatar_url: 'https://cdn-icons-png.flaticon.com/512/149/149071.png'
-          },
+          user_metadata: { full_name: 'Invitado' },
           email: 'invitado@moneyup.ai'
-        };
-        setUser(mockUser);
+        } as any);
+      } finally {
+        console.log("Initialization complete, sets loading to false");
+        setLoading(false);
       }
-      setLoading(false);
-    });
+    };
+
+    initializeAuth();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      console.log("Auth state changed:", _event, session?.user?.email);
       if (session) {
         setUser(session.user as any);
+      } else if (_event === 'SIGNED_OUT') {
+        setUser(null);
       }
       setLoading(false);
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      if (subscription) subscription.unsubscribe();
+    };
   }, []);
 
   useEffect(() => {
@@ -271,12 +293,13 @@ export default function App() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center gap-4">
         <motion.div 
           animate={{ rotate: 360 }}
           transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
           className="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full"
         />
+        <p className="text-slate-500 text-xs font-bold tracking-widest animate-pulse uppercase">Cargando MoneyUp...</p>
       </div>
     );
   }
