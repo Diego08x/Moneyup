@@ -4,6 +4,10 @@ import { getFirestore, collection, addDoc, onSnapshot, query, where, orderBy, up
 
 import firebaseConfig from '../../firebase-applet-config.json';
 
+if (!firebaseConfig || !firebaseConfig.apiKey || firebaseConfig.apiKey === 'PASTE_API_KEY_HERE') {
+  console.warn("Firebase config is missing or invalid. Auth and Firestore will not work.");
+}
+
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app, (firebaseConfig as any).firestoreDatabaseId);

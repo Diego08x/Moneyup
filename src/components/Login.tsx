@@ -8,13 +8,32 @@ interface LoginProps {
 }
 
 export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
+  const [error, setError] = React.useState<string | null>(null);
+  const [isLoading, setIsLoading] = React.useState(false);
+
   const handleLogin = async () => {
+    setError(null);
+    setIsLoading(true);
     try {
       await signInWithGoogle();
       if (onLoginSuccess) onLoginSuccess();
-    } catch (error) {
-      console.error("Login failed:", error);
-      alert("Error al iniciar sesión. Por favor intenta de nuevo.");
+    } catch (err: any) {
+      console.error("Login failed:", err);
+      let message = "Error al iniciar sesión. Por favor intenta de nuevo.";
+      
+      if (err.code === 'auth/popup-blocked') {
+        message = "El navegador bloqueó la ventana de inicio de sesión. Por favor activa los pop-ups.";
+      } else if (err.code === 'auth/cancelled-popup-request') {
+        message = "La ventana de inicio de sesión se cerró. Inténtalo de nuevo.";
+      } else if (err.code === 'auth/unauthorized-domain') {
+        message = "Este dominio no está autorizado en Firebase. Añade este dominio en la consola de Firebase.";
+      } else if (err.message) {
+        message = `Error: ${err.message}`;
+      }
+      
+      setError(message);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -47,12 +66,33 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
             <h2 className="text-2xl font-bold text-center mb-2">Bienvenido de nuevo</h2>
             <p className="text-slate-500 text-sm text-center mb-8">Inicia sesión para sincronizar tus datos en todos tus dispositivos.</p>
             
+            {error && (
+              <motion.div 
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                className="bg-rose-500/10 border border-rose-500/20 text-rose-400 p-4 rounded-2xl text-xs font-bold mb-6 text-center"
+              >
+                {error}
+              </motion.div>
+            )}
+
             <button 
               onClick={handleLogin}
-              className="w-full bg-white text-slate-950 py-4 rounded-2xl font-black flex items-center justify-center gap-3 hover:bg-slate-200 transition-all active:scale-95 shadow-xl"
+              disabled={isLoading}
+              className="w-full bg-white text-slate-950 py-4 rounded-2xl font-black flex items-center justify-center gap-3 hover:bg-slate-200 transition-all active:scale-95 shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <img src="https://www.google.com/favicon.ico" alt="Google" className="w-5 h-5" />
-              Continuar con Google
+              {isLoading ? (
+                <motion.div 
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                  className="w-5 h-5 border-2 border-slate-950 border-t-transparent rounded-full"
+                />
+              ) : (
+                <>
+                  <img src="https://www.google.com/favicon.ico" alt="Google" className="w-5 h-5" />
+                  Continuar con Google
+                </>
+              )}
             </button>
             
             <p className="mt-8 text-[10px] text-slate-600 text-center uppercase tracking-widest font-bold">
