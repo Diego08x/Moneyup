@@ -212,19 +212,34 @@ export default function App() {
     setIsAskingAi(true);
     setAiAdvice(null);
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
+
       const resp = await fetch('/api/advisor', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        signal: controller.signal,
         body: JSON.stringify({ 
           transactions: transactions.slice(0, 10),
           userProfile: { displayName: 'User', walletBalance: balance }
         }),
       });
+      
+      clearTimeout(timeoutId);
       const data = await resp.json();
-      setAiAdvice(data.advice);
-    } catch (err) {
+      
+      if (!resp.ok) {
+        throw new Error(data.details || data.error || "Error en el servidor");
+      }
+      
+      setAiAdvice(data.advice || "No pude generar un consejo.");
+    } catch (err: any) {
       console.error(err);
-      setAiAdvice("Lo siento, no pude obtener consejos en este momento.");
+      if (err.name === 'AbortError') {
+        setAiAdvice("La consulta tardó demasiado. Por favor intenta de nuevo.");
+      } else {
+        setAiAdvice(`Error: ${err.message || "No pude obtener consejos en este momento."}`);
+      }
     } finally {
       setIsAskingAi(false);
     }
@@ -278,9 +293,13 @@ export default function App() {
     setIsTyping(true);
 
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout
+
       const resp = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        signal: controller.signal,
         body: JSON.stringify({
           messages: [...chatMessages, newUserMsg],
           userProfile: { displayName: 'Mateo', walletBalance: balance },
@@ -288,16 +307,23 @@ export default function App() {
         })
       });
       
+      clearTimeout(timeoutId);
       const data = await resp.json();
       
       if (!resp.ok) {
         throw new Error(data.details || data.error || "Error en el servidor");
       }
       
-      setChatMessages(prev => [...prev, { role: 'assistant', text: data.text || "No obtuve respuesta." }]);
+      setChatMessages(prev => [...prev, { role: 'assistant', text: data.text || "No obtuve respuesta del modelo." }]);
     } catch (err: any) {
       console.error(err);
-      setChatMessages(prev => [...prev, { role: 'assistant', text: `Error: ${err.message || "Hubo un error al conectar con Gemini."}` }]);
+      let errorMsg = "Hubo un error al conectar con Gemini.";
+      if (err.name === 'AbortError') {
+        errorMsg = "La conexión con la IA tardó demasiado. Por favor, reintenta.";
+      } else if (err.message) {
+        errorMsg = `Error: ${err.message}`;
+      }
+      setChatMessages(prev => [...prev, { role: 'assistant', text: errorMsg }]);
     } finally {
       setIsTyping(false);
     }

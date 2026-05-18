@@ -10,7 +10,8 @@ app.use(express.json());
 const getAIClient = () => {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    throw new Error("No se encontró la API Key de Gemini. Por favor agrégala en Configuración > Secretos.");
+    console.error("FATAL: GEMINI_API_KEY is missing from environment");
+    throw new Error("No se configuró la llave GEMINI_API_KEY. Agrégala en Configuración > Secretos.");
   }
   return new GoogleGenAI({
     apiKey,
@@ -24,6 +25,7 @@ const getAIClient = () => {
 
 // AI Advisor endpoint
 app.post("/api/advisor", async (req, res) => {
+  console.log("Advisor request received");
   try {
     const ai = getAIClient();
     const { transactions, userProfile } = req.body;
@@ -50,10 +52,9 @@ app.post("/api/advisor", async (req, res) => {
       INSTRUCCIONES:
       1. Proporciona un análisis breve de sus hábitos de gasto e ingreso.
       2. Da 3 consejos específicos para que ahorre más o gestione mejor su dinero.
-      3. Usa un tono cercano, con energía "cool" pero profesional.
+      3. Usa un tono cercano, energético y profesional.
       4. Si no hay gastos registrados, anímalo a empezar.
-      5. Formatea la respuesta estrictamente con Markdown (usa negritas, listas y emojis).
-      6. Responde en Español.
+      5. Responde estrictamente en Markdown y en Español.
     `;
 
     const response = await ai.models.generateContent({
@@ -61,44 +62,69 @@ app.post("/api/advisor", async (req, res) => {
       contents: prompt,
     });
 
-    res.json({ advice: response.text || "No pude generar un consejo en este momento." });
+    const text = response.text;
+    if (!text) {
+      throw new Error("El modelo no generó ninguna respuesta de texto.");
+    }
+
+    res.json({ advice: text });
   } catch (error: any) {
-    console.error("AI Advisor Error:", error);
-    res.status(500).json({ error: "Failed to get advice", details: error.message });
+    console.error("Advisor Error:", error);
+    res.status(500).json({ error: "Error al generar consejo", details: error.message });
   }
 });
 
 // General Chat endpoint
 app.post("/api/chat", async (req, res) => {
+  console.log("Chat request received");
   try {
     const ai = getAIClient();
     const { messages, userProfile, transactions } = req.body;
 
-    const lastMessage = messages[messages.length - 1].text;
-    const history = messages.slice(0, -1).map((m: any) => ({
-      role: m.role === 'user' ? 'user' : 'model',
-      parts: [{ text: m.text }]
-    }));
+    if (!messages || messages.length === 0) {
+      return res.status(400).json({ error: "No hay mensajes en la solicitud" });
+    }
 
-    const chat = ai.chats.create({
-      model: "gemini-3-flash-preview",
-      config: {
-        systemInstruction: `Eres "MoneyUp Advisor", un asistente financiero personal amigable y experto.
-        Datos del usuario actual:
-        - Nombre: ${userProfile.displayName || 'Mateo'}
-        - Balance: $${userProfile.walletBalance}
-        - Últimas transacciones: ${JSON.stringify(transactions.slice(0, 5))}
-        Responde de forma concisa, motivadora y en español. Usa emojis.`,
+    const lastMessage = messages[messages.length - 1].text;
+    
+    // Use generateContent directly for robustness
+    const contents = [
+      {
+        role: "user",
+        parts: [{ text: `Eres "MoneyUp Advisor", un asistente financiero experto.
+        Usuario: ${userProfile.displayName || 'Mateo'}
+        Balance: $${userProfile.walletBalance}
+        Últimas transacciones: ${JSON.stringify(transactions.slice(0, 5))}
+        Responde de forma breve, motivadora y en español. Usa emojis. 👋` }]
       },
-      history: history
+      {
+        role: "model",
+        parts: [{ text: "¡Hola! Estoy listo para ayudarte con tus finanzas. ¿Qué tienes en mente? 🚀" }]
+      },
+      ...messages.map((m: any) => ({
+        role: m.role === 'user' ? 'user' : 'model',
+        parts: [{ text: m.text }]
+      }))
+    ];
+
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: contents,
     });
 
-    const response = await chat.sendMessage({ message: lastMessage });
+    const text = response.text;
+    if (!text) {
+      throw new Error("La IA no respondió nada. Por favor, intenta de nuevo.");
+    }
 
-    res.json({ text: response.text || "Perdona, no pude procesar eso. ¿Puedes repetirlo?" });
+    res.json({ text: text });
   } catch (error: any) {
-    console.error("Chat Error:", error);
-    res.status(500).json({ error: "Error de comunicación", details: error.message });
+    console.error("Chat API Error:", error);
+    res.status(500).json({ 
+      error: "Error en el chat", 
+      details: error.message || "Desconocido",
+      apiKeyPresent: !!process.env.GEMINI_API_KEY
+    });
   }
 });
 
