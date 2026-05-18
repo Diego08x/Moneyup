@@ -1,0 +1,6 @@
+{
+  "name": "MoneyUp",
+  "description": "A modern financial assistant for young people with AI-powered insights and expense tracking.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
