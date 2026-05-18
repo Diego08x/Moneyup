@@ -171,6 +171,7 @@ export default function App() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [aiAdvice, setAiAdvice] = useState<string | null>(null);
   const [isAskingAi, setIsAskingAi] = useState(false);
+  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
 
   // Form State
   const [newType, setNewType] = useState<'income' | 'expense'>('expense');
@@ -459,25 +460,80 @@ export default function App() {
               <Plus size={18} />
               <span className="hidden sm:inline">Nuevo Movimiento</span>
             </button>
-            <div className="flex items-center gap-3 pl-4 border-l border-slate-800">
+            <div className="flex items-center gap-3 pl-4 border-l border-slate-800 relative">
               <div className="hidden sm:block text-right">
                 <p className="text-[10px] font-bold text-white uppercase tracking-wider">{user.displayName || 'Diego'}</p>
                 <p className="text-[8px] text-slate-500 font-bold">USUARIO PRO</p>
               </div>
-              {user.photoURL ? (
-                <img src={user.photoURL} alt="User" className="w-10 h-10 rounded-full border border-slate-800 cursor-pointer" onClick={() => logout()} />
-              ) : (
-                <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 border border-slate-800 flex items-center justify-center text-white font-bold cursor-pointer" onClick={() => logout()}>
-                  {user.displayName?.[0] || 'D'}
-                </div>
-              )}
-              <button 
-                onClick={() => logout()}
-                className="p-2 text-slate-500 hover:text-white transition-colors"
-                title="Cerrar sesión"
-              >
-                <LogOut size={16} />
-              </button>
+              
+              <div className="relative">
+                <button 
+                  onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
+                  className="flex items-center focus:outline-none"
+                >
+                  {user.photoURL ? (
+                    <img 
+                      src={user.photoURL} 
+                      alt="User" 
+                      className="w-10 h-10 rounded-full border border-slate-800 hover:border-indigo-500/50 transition-all cursor-pointer" 
+                    />
+                  ) : (
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 border border-slate-800 flex items-center justify-center text-white font-bold cursor-pointer hover:shadow-lg hover:shadow-indigo-500/20 transition-all">
+                      {user.displayName?.[0] || 'D'}
+                    </div>
+                  )}
+                </button>
+
+                <AnimatePresence>
+                  {isProfileMenuOpen && (
+                    <>
+                      <div 
+                        className="fixed inset-0 z-40 bg-transparent" 
+                        onClick={() => setIsProfileMenuOpen(false)} 
+                      />
+                      <motion.div
+                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                        className="absolute right-0 mt-3 w-56 bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl z-50 overflow-hidden"
+                      >
+                        <div className="p-3">
+                          <div className="px-3 py-3 border-b border-slate-800/50 mb-2">
+                            <p className="text-xs font-black text-white truncate uppercase tracking-tight">{user.displayName || 'Diego'}</p>
+                            <p className="text-[10px] text-slate-500 truncate font-medium">{user.email}</p>
+                          </div>
+                          
+                          <div className="space-y-1">
+                            <button 
+                              onClick={() => {
+                                setIsProfileMenuOpen(false);
+                                setActiveTab('dashboard');
+                              }}
+                              className="w-full flex items-center gap-3 px-3 py-2 text-xs text-slate-300 hover:bg-slate-800 rounded-xl transition-colors font-bold"
+                            >
+                              <History size={14} />
+                              Mi Actividad
+                            </button>
+                            <button 
+                              onClick={() => {
+                                logout();
+                                setIsProfileMenuOpen(false);
+                              }}
+                              className="w-full flex items-center gap-3 px-3 py-2 text-xs text-rose-400 hover:bg-rose-500/10 rounded-xl transition-colors font-bold"
+                            >
+                              <LogOut size={14} />
+                              Cerrar Sesión
+                            </button>
+                          </div>
+                        </div>
+                        <div className="bg-slate-800/50 p-2 text-center">
+                           <p className="text-[8px] text-slate-600 font-bold uppercase tracking-widest leading-none">MoneyUp v2.1.0</p>
+                        </div>
+                      </motion.div>
+                    </>
+                  )}
+                </AnimatePresence>
+              </div>
             </div>
           </div>
         </div>
