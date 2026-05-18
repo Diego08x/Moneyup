@@ -167,35 +167,39 @@ export default function App() {
 
   useEffect(() => {
     console.log("App mounted, initializing auth...");
+    
+    // Safety timeout to ensure loading is eventually set to false
+    const timeoutId = setTimeout(() => {
+      console.log("Auth initialization timeout reached");
+      setLoading(false);
+    }, 5000);
+
     const initializeAuth = async () => {
       try {
-        console.log("Fetching session...");
-        const { data: { session }, error } = await supabase.auth.getSession();
-        if (error) throw error;
-
+        const { data: { session } } = await supabase.auth.getSession();
+        
         if (session) {
-          console.log("Session found:", session.user.email);
           setUser(session.user as any);
         } else {
-          console.log("No session, using mock guest user");
+          // Usuario invitado por defecto
           setUser({
             id: 'invitado_123',
             user_metadata: {
               full_name: 'Invitado',
-              avatar_url: 'https://cdn-icons-png.flaticon.com/512/149/149071.png'
+              avatar_url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=MoneyUp'
             },
             email: 'invitado@moneyup.ai'
           } as any);
         }
       } catch (err) {
-        console.error("Supabase auth error:", err);
+        console.error("Auth init error:", err);
         setUser({
           id: 'invitado_123',
           user_metadata: { full_name: 'Invitado' },
           email: 'invitado@moneyup.ai'
         } as any);
       } finally {
-        console.log("Initialization complete, sets loading to false");
+        clearTimeout(timeoutId);
         setLoading(false);
       }
     };
@@ -206,10 +210,10 @@ export default function App() {
       console.log("Auth state changed:", _event, session?.user?.email);
       if (session) {
         setUser(session.user as any);
+        setLoading(false);
       } else if (_event === 'SIGNED_OUT') {
         setUser(null);
       }
-      setLoading(false);
     });
 
     return () => {

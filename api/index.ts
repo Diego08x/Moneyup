@@ -15,7 +15,7 @@ const getAIClient = () => {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     console.error("FATAL: GEMINI_API_KEY is missing from environment");
-    throw new Error("No se configuró la llave GEMINI_API_KEY. Agrégala en Configuración > Secretos.");
+    throw new Error("No se configuró la llave GEMINI_API_KEY. Agrégala en las variables de entorno de Vercel.");
   }
   _aiClient = new GoogleGenAI({
     apiKey,
@@ -27,6 +27,11 @@ const getAIClient = () => {
   });
   return _aiClient;
 };
+
+// Health check
+app.get("/api/health", (req, res) => {
+  res.json({ status: "ok", message: "MoneyUp API is running" });
+});
 
 // AI Advisor endpoint
 app.post("/api/advisor", async (req, res) => {
@@ -49,8 +54,8 @@ app.post("/api/advisor", async (req, res) => {
       Tu misión es ayudar al usuario a mejorar sus finanzas personales con consejos accionables y directos.
 
       CONTEXTO DEL USUARIO:
-      - Nombre: ${userProfile.displayName || 'Usuario'}
-      - Balance Actual: $${userProfile.walletBalance}
+      - Nombre: ${userProfile?.displayName || 'Usuario'}
+      - Balance Actual: $${userProfile?.walletBalance}
       - Transacciones Recientes:
       ${transactionsContext}
 
@@ -93,16 +98,14 @@ app.post("/api/chat", async (req, res) => {
       return res.status(400).json({ error: "No hay mensajes en la solicitud" });
     }
 
-    const lastMessage = messages[messages.length - 1].text;
-    
     // Use generateContent directly for robustness
     const contents = [
       {
         role: "user",
         parts: [{ text: `Eres "MoneyUp Advisor", un asistente financiero experto.
-        Usuario: ${userProfile.displayName || 'Diego'}
-        Balance: $${userProfile.walletBalance}
-        Últimas transacciones: ${JSON.stringify(transactions.slice(0, 5))}
+        Usuario: ${userProfile?.displayName || 'Diego'}
+        Balance: $${userProfile?.walletBalance}
+        Últimas transacciones: ${JSON.stringify((transactions || []).slice(0, 5))}
         Responde de forma breve, motivadora y en español. Usa emojis. 👋` }]
       },
       {
@@ -139,4 +142,4 @@ app.post("/api/chat", async (req, res) => {
   }
 });
 
-export { app };
+export default app;

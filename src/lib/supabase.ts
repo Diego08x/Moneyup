@@ -10,12 +10,19 @@ if (!isConfigValid) {
 }
 
 // Credenciales proporcionadas por el usuario:
-const DEFAULT_URL = 'https://oaOSIgTS6R55dS1AExJ1IA.supabase.co';
+const DEFAULT_URL = 'https://oaosigts6r55ds1aexj1ia.supabase.co';
 const DEFAULT_KEY = 'sb_publishable_oaOSIgTS6R55dS1AExJ1IA_nDXkpe8e';
 
 export const supabase = createClient(
   isConfigValid ? supabaseUrl : DEFAULT_URL,
-  supabaseAnonKey || DEFAULT_KEY
+  supabaseAnonKey || DEFAULT_KEY,
+  {
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true
+    }
+  }
 );
 
 export const signInWithGoogle = async () => {
