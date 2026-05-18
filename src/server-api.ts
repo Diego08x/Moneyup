@@ -13,8 +13,10 @@ const getAIClient = () => {
   if (_aiClient) return _aiClient;
   
   const apiKey = process.env.GEMINI_API_KEY;
+  console.log("[SERVER-API] Checking GEMINI_API_KEY presence:", !!apiKey);
+  
   if (!apiKey) {
-    console.error("FATAL: GEMINI_API_KEY is missing from environment");
+    console.error("FATAL: GEMINI_API_KEY is missing from environment. Keys found:", Object.keys(process.env).filter(k => k.includes("API") || k.includes("KEY")));
     // No throw here, return null to handle gracefully in routes
     return null;
   }
