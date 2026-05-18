@@ -22,38 +22,11 @@ service cloud.firestore {
     // --- Entities ---
 
     match /transactions/{transactionId} {
-      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
-      allow create: if isSignedIn() && 
-                      isValidTransaction(request.resource.data) &&
-                      request.resource.data.userId == request.auth.uid;
-      allow update: if isSignedIn() && 
-                      resource.data.userId == request.auth.uid &&
-                      isValidTransaction(request.resource.data) &&
-                      request.resource.data.userId == request.auth.uid;
-      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
-    }
-
-    function isValidTransaction(data) {
-      return data.keys().hasAll(['id', 'type', 'category', 'amount', 'date', 'userId']) &&
-             data.keys().size() <= 7 && // optional description
-             data.id is string &&
-             data.type in ['income', 'expense'] &&
-             data.category is string &&
-             data.amount is number &&
-             data.date is string &&
-             data.userId is string;
+      allow read, write: if true;
     }
 
     match /goals/{goalId} {
-      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
-      allow create: if isSignedIn() && 
-                      isValidGoal(request.resource.data) &&
-                      request.resource.data.userId == request.auth.uid;
-      allow update: if isSignedIn() && 
-                      resource.data.userId == request.auth.uid &&
-                      isValidGoal(request.resource.data) &&
-                      request.resource.data.userId == request.auth.uid;
-      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow read, write: if true;
     }
 
     function isValidGoal(data) {

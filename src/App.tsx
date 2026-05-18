@@ -180,20 +180,21 @@ export default function App() {
   const [newDesc, setNewDesc] = useState('');
 
   useEffect(() => {
+    // Bypass login immediately for guest access as requested
+    const mockUser: any = {
+      uid: 'invitado_123',
+      displayName: 'Invitado',
+      email: 'invitado@moneyup.ai',
+      photoURL: 'https://cdn-icons-png.flaticon.com/512/149/149071.png'
+    };
+    setUser(mockUser);
+    setLoading(false);
+
+    // Still listen to auth changes in case they eventually log in
     const unsubscribe = onAuthStateChanged(auth, (u) => {
-      // Bypass login for now as requested
-      if (!u) {
-        const mockUser: any = {
-          uid: 'invitado_123',
-          displayName: 'Invitado',
-          email: 'invitado@moneyup.ai',
-          photoURL: 'https://cdn-icons-png.flaticon.com/512/149/149071.png'
-        };
-        setUser(mockUser);
-      } else {
+      if (u) {
         setUser(u);
       }
-      setLoading(false);
     });
     return () => unsubscribe();
   }, []);
