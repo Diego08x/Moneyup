@@ -10,6 +10,13 @@ interface LoginProps {
 export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
   const [error, setError] = React.useState<string | null>(null);
   const [isLoading, setIsLoading] = React.useState(false);
+  const [currentHost, setCurrentHost] = React.useState("");
+
+  React.useEffect(() => {
+    setCurrentHost(window.location.hostname);
+    console.log("Current hostname:", window.location.hostname);
+    console.log("Current href:", window.location.href);
+  }, []);
 
   const handleLogin = async () => {
     setError(null);
@@ -26,7 +33,15 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
       } else if (err.code === 'auth/cancelled-popup-request') {
         message = "La ventana de inicio de sesión se cerró. Inténtalo de nuevo.";
       } else if (err.code === 'auth/unauthorized-domain') {
-        message = "Dominio no autorizado. Debes añadir este dominio en la consola de Firebase (Autenticación > Ajustes > Dominios autorizados).";
+        const domain = window.location.hostname;
+        message = `DOMINIO NO AUTORIZADO: [${domain}]. 
+        
+        Sigue estos pasos IMPORTANTES:
+        1. Copia EXACTAMENTE el nombre arriba (entre los corchetes).
+        2. Ve a tu Consola de Firebase.
+        3. Authentication > Settings > Authorized Domains.
+        4. Haz clic en "Add Domain" y pega el texto copiado.
+        5. Espera 1 minuto y REFRESCAR esta página.`;
       } else if (err.message) {
         message = `Error: ${err.message}`;
       }
@@ -101,9 +116,16 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
               ) : (
                 <>
                   <img src="https://www.google.com/favicon.ico" alt="Google" className="w-5 h-5" />
-                  ENTRAR CON GOOGLE
+                  ACCEDER CON MI CUENTA
                 </>
               )}
+            </button>
+            
+            <button 
+              onClick={() => window.location.reload()}
+              className="mt-4 w-full text-slate-500 text-[10px] uppercase font-bold hover:text-white transition-colors"
+            >
+              🔄 Forzar Recarga de Aplicación
             </button>
             
             <p className="mt-8 text-[10px] text-slate-600 text-center uppercase tracking-widest font-bold">

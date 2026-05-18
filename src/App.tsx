@@ -181,7 +181,18 @@ export default function App() {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (u) => {
-      setUser(u);
+      // Bypass login for now as requested
+      if (!u) {
+        const mockUser: any = {
+          uid: 'invitado_123',
+          displayName: 'Invitado',
+          email: 'invitado@moneyup.ai',
+          photoURL: 'https://cdn-icons-png.flaticon.com/512/149/149071.png'
+        };
+        setUser(mockUser);
+      } else {
+        setUser(u);
+      }
       setLoading(false);
     });
     return () => unsubscribe();
