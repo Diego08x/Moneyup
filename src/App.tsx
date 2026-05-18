@@ -29,6 +29,7 @@ import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
 import { supabase } from './lib/supabase';
+import { User } from '@supabase/supabase-js';
 import { Login } from './components/Login';
 
 // --- Utils ---
@@ -169,12 +170,25 @@ export default function App() {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
         setUser(session.user as any);
+      } else {
+        // Bypass login immediately for guest access as requested: "quiero que salga por ahora el inicio de una sin iniciar sesion"
+        const mockUser: any = {
+          id: 'invitado_123',
+          user_metadata: {
+            full_name: 'Invitado',
+            avatar_url: 'https://cdn-icons-png.flaticon.com/512/149/149071.png'
+          },
+          email: 'invitado@moneyup.ai'
+        };
+        setUser(mockUser);
       }
       setLoading(false);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChanged((_event, session) => {
-      setUser(session?.user as any || null);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session) {
+        setUser(session.user as any);
+      }
       setLoading(false);
     });
 
@@ -191,7 +205,7 @@ export default function App() {
       const { data, error } = await supabase
         .from('transactions')
         .select('*')
-        .eq('userId', user.uid)
+        .eq('userId', user.id)
         .order('date', { ascending: false });
       
       if (data) setTransactions(data);
@@ -205,7 +219,7 @@ export default function App() {
       .channel('schema-db-changes')
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'transactions', filter: `userId=eq.${user.uid}` },
+        { event: '*', schema: 'public', table: 'transactions', filter: `userId=eq.${user.id}` },
         () => fetchTransactions()
       )
       .subscribe();
@@ -225,7 +239,7 @@ export default function App() {
       const { data, error } = await supabase
         .from('goals')
         .select('*')
-        .eq('userId', user.uid);
+        .eq('userId', user.id);
       
       if (data) setGoals(data);
       if (error) console.error("Error fetching goals:", error);
@@ -237,7 +251,7 @@ export default function App() {
       .channel('goals-changes')
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'goals', filter: `userId=eq.${user.uid}` },
+        { event: '*', schema: 'public', table: 'goals', filter: `userId=eq.${user.id}` },
         () => fetchGoals()
       )
       .subscribe();
@@ -282,7 +296,7 @@ export default function App() {
         category: newCategory,
         description: newDesc,
         date: new Date().toISOString(),
-        userId: user.uid,
+        userId: user.id,
       };
 
       const { error } = await supabase
@@ -320,7 +334,7 @@ export default function App() {
         signal: controller.signal,
         body: JSON.stringify({ 
           transactions: transactions.slice(0, 10),
-          userProfile: { displayName: user.displayName || 'Diego', walletBalance: balance }
+          userProfile: { displayName: (user as any).user_metadata?.full_name || user.email || 'Usuario', walletBalance: balance }
         }),
       });
       
@@ -358,7 +372,7 @@ export default function App() {
           target: parseFloat(target),
           current: 0,
           color: 'from-indigo-500 to-purple-500',
-          userId: user.uid
+          userId: user.id
         }]);
       if (error) throw error;
     } catch (err) {
@@ -421,7 +435,7 @@ export default function App() {
         signal: controller.signal,
         body: JSON.stringify({
           messages: [...chatMessages, newUserMsg],
-          userProfile: { displayName: user?.displayName || 'Diego', walletBalance: balance },
+          userProfile: { displayName: (user as any).user_metadata?.full_name || user.email || 'Usuario', walletBalance: balance },
           transactions: transactions.slice(0, 10)
         })
       });
@@ -497,7 +511,7 @@ export default function App() {
             </button>
             <div className="flex items-center gap-3 pl-4 border-l border-slate-800 relative">
               <div className="hidden sm:block text-right">
-                <p className="text-[10px] font-bold text-white uppercase tracking-wider">{user.displayName || 'Diego'}</p>
+                <p className="text-[10px] font-bold text-white uppercase tracking-wider">{(user as any).user_metadata?.full_name || user.email?.split('@')[0] || 'Invitado'}</p>
                 <p className="text-[8px] text-slate-500 font-bold">USUARIO PRO</p>
               </div>
               
@@ -506,15 +520,15 @@ export default function App() {
                   onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
                   className="flex items-center focus:outline-none"
                 >
-                  {user.photoURL ? (
+                  {(user as any).user_metadata?.avatar_url ? (
                     <img 
-                      src={user.photoURL} 
+                      src={(user as any).user_metadata.avatar_url} 
                       alt="User" 
                       className="w-10 h-10 rounded-full border border-slate-800 hover:border-indigo-500/50 transition-all cursor-pointer" 
                     />
                   ) : (
                     <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 border border-slate-800 flex items-center justify-center text-white font-bold cursor-pointer hover:shadow-lg hover:shadow-indigo-500/20 transition-all">
-                      {user.displayName?.[0] || 'D'}
+                      {((user as any).user_metadata?.full_name?.[0] || user.email?.[0] || 'I').toUpperCase()}
                     </div>
                   )}
                 </button>
@@ -534,7 +548,7 @@ export default function App() {
                       >
                         <div className="p-3">
                           <div className="px-3 py-3 border-b border-slate-800/50 mb-2">
-                            <p className="text-xs font-black text-white truncate uppercase tracking-tight">{user.displayName || 'Diego'}</p>
+                            <p className="text-xs font-black text-white truncate uppercase tracking-tight">{(user as any).user_metadata?.full_name || user.email?.split('@')[0] || 'Invitado'}</p>
                             <p className="text-[10px] text-slate-500 truncate font-medium">{user.email}</p>
                           </div>
                           

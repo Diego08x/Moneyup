@@ -28,22 +28,8 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
       console.error("Login failed:", err);
       let message = "Error al iniciar sesión. Por favor intenta de nuevo.";
       
-      if (err.code === 'auth/popup-blocked') {
-        message = "El navegador bloqueó la ventana de inicio de sesión. Prueba abrir la aplicación en una pestaña nueva.";
-      } else if (err.code === 'auth/cancelled-popup-request') {
-        message = "La ventana de inicio de sesión se cerró. Inténtalo de nuevo.";
-      } else if (err.code === 'auth/unauthorized-domain') {
-        const domain = window.location.hostname;
-        message = `DOMINIO NO AUTORIZADO: [${domain}]. 
-        
-        Sigue estos pasos IMPORTANTES:
-        1. Copia EXACTAMENTE el nombre arriba (entre los corchetes).
-        2. Ve a tu Consola de Firebase.
-        3. Authentication > Settings > Authorized Domains.
-        4. Haz clic en "Add Domain" y pega el texto copiado.
-        5. Espera 1 minuto y REFRESCAR esta página.`;
-      } else if (err.message) {
-        message = `Error: ${err.message}`;
+      if (err.message) {
+        message = `Error de Autenticación: ${err.message}`;
       }
       
       setError(message);
