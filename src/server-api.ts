@@ -1,5 +1,5 @@
 import express from "express";
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI, ThinkingLevel } from "@google/genai";
 import dotenv from "dotenv";
 
 dotenv.config();
@@ -7,13 +7,17 @@ dotenv.config();
 const app = express();
 app.use(express.json());
 
+let _aiClient: GoogleGenAI | null = null;
+
 const getAIClient = () => {
+  if (_aiClient) return _aiClient;
+  
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     console.error("FATAL: GEMINI_API_KEY is missing from environment");
     throw new Error("No se configuró la llave GEMINI_API_KEY. Agrégala en Configuración > Secretos.");
   }
-  return new GoogleGenAI({
+  _aiClient = new GoogleGenAI({
     apiKey,
     httpOptions: {
       headers: {
@@ -21,11 +25,12 @@ const getAIClient = () => {
       }
     }
   });
+  return _aiClient;
 };
 
 // AI Advisor endpoint
 app.post("/api/advisor", async (req, res) => {
-  console.log("Advisor request received");
+  console.log("[API] Advisor request");
   try {
     const ai = getAIClient();
     const { transactions, userProfile } = req.body;
@@ -60,6 +65,9 @@ app.post("/api/advisor", async (req, res) => {
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
       contents: prompt,
+      config: {
+        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW }
+      }
     });
 
     const text = response.text;
@@ -69,7 +77,7 @@ app.post("/api/advisor", async (req, res) => {
 
     res.json({ advice: text });
   } catch (error: any) {
-    console.error("Advisor Error:", error);
+    console.error("[API ERROR] Advisor:", error);
     res.status(500).json({ error: "Error al generar consejo", details: error.message });
   }
 });
@@ -110,6 +118,9 @@ app.post("/api/chat", async (req, res) => {
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
       contents: contents,
+      config: {
+        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW }
+      }
     });
 
     const text = response.text;
@@ -119,7 +130,7 @@ app.post("/api/chat", async (req, res) => {
 
     res.json({ text: text });
   } catch (error: any) {
-    console.error("Chat API Error:", error);
+    console.error("[API ERROR] Chat:", error);
     res.status(500).json({ 
       error: "Error en el chat", 
       details: error.message || "Desconocido",

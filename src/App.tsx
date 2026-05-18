@@ -210,7 +210,7 @@ export default function App() {
     setAiAdvice(null);
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000);
+      const timeoutId = setTimeout(() => controller.abort(), 30000);
 
       const resp = await fetch('/api/advisor', {
         method: 'POST',
@@ -291,7 +291,7 @@ export default function App() {
 
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
 
       const resp = await fetch('/api/chat', {
         method: 'POST',
