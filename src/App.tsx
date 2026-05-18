@@ -231,14 +231,26 @@ export default function App() {
     }
 
     const fetchTransactions = async () => {
-      const { data, error } = await supabase
-        .from('transactions')
-        .select('*')
-        .eq('userId', user.id)
-        .order('date', { ascending: false });
-      
-      if (data) setTransactions(data);
-      if (error) console.error("Error fetching transactions:", error);
+      // 1. Cargar datos locales primero para respuesta instantánea
+      const localData = localStorage.getItem(`transactions_${user.id}`);
+      if (localData) {
+        setTransactions(JSON.parse(localData));
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from('transactions')
+          .select('*')
+          .eq('userId', user.id)
+          .order('date', { ascending: false });
+        
+        if (data && data.length > 0) {
+          setTransactions(data);
+          localStorage.setItem(`transactions_${user.id}`, JSON.stringify(data));
+        }
+      } catch (error) {
+        console.warn("Supabase unreachable, using local data only.");
+      }
     };
 
     fetchTransactions();
@@ -265,13 +277,25 @@ export default function App() {
     }
 
     const fetchGoals = async () => {
-      const { data, error } = await supabase
-        .from('goals')
-        .select('*')
-        .eq('userId', user.id);
-      
-      if (data) setGoals(data);
-      if (error) console.error("Error fetching goals:", error);
+      // Cargar local primero
+      const localGoals = localStorage.getItem(`goals_${user.id}`);
+      if (localGoals) {
+        setGoals(JSON.parse(localGoals));
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from('goals')
+          .select('*')
+          .eq('userId', user.id);
+        
+        if (data && data.length > 0) {
+          setGoals(data);
+          localStorage.setItem(`goals_${user.id}`, JSON.stringify(data));
+        }
+      } catch (error) {
+        console.warn("Using local goals fallback");
+      }
     };
 
     fetchGoals();
@@ -319,27 +343,34 @@ export default function App() {
     e.preventDefault();
     if (!newAmount || !newCategory || !user) return;
 
-    try {
-      const transactionData = {
-        type: newType,
-        amount: parseFloat(newAmount),
-        category: newCategory,
-        description: newDesc,
-        date: new Date().toISOString(),
-        userId: user.id,
-      };
+    const transactionData = {
+      id: crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(7),
+      type: newType,
+      amount: parseFloat(newAmount),
+      category: newCategory,
+      description: newDesc,
+      date: new Date().toISOString(),
+      userId: user.id,
+    };
 
+    // Actualizar UI inmediatamente (Optimistic Update)
+    const updatedTransactions = [transactionData as Transaction, ...transactions];
+    setTransactions(updatedTransactions);
+    localStorage.setItem(`transactions_${user.id}`, JSON.stringify(updatedTransactions));
+
+    try {
       const { error } = await supabase
         .from('transactions')
         .insert([transactionData]);
 
-      if (error) throw error;
-      
+      if (error) {
+        console.warn("Could not save to Supabase, but saved locally:", error);
+      }
+    } catch (err) {
+      console.warn("Supabase offline, using local storage fallback.");
+    } finally {
       setIsModalOpen(false);
       resetForm();
-    } catch (err) {
-      console.error("Error adding transaction:", err);
-      alert("Error al guardar la transacción. Revisa la consola para más detalles.");
     }
   };
 
@@ -394,32 +425,36 @@ export default function App() {
     const target = prompt("Monto objetivo:");
     if (!name || !target) return;
 
+    const newGoal = {
+      id: Math.random().toString(36).substring(7),
+      name,
+      target: parseFloat(target),
+      current: 0,
+      color: 'from-indigo-500 to-purple-500',
+      userId: user.id
+    };
+
+    const updatedGoals = [...goals, newGoal as Goal];
+    setGoals(updatedGoals);
+    localStorage.setItem(`goals_${user.id}`, JSON.stringify(updatedGoals));
+
     try {
-      const { error } = await supabase
-        .from('goals')
-        .insert([{
-          name,
-          target: parseFloat(target),
-          current: 0,
-          color: 'from-indigo-500 to-purple-500',
-          userId: user.id
-        }]);
-      if (error) throw error;
+      await supabase.from('goals').insert([newGoal]);
     } catch (err) {
-      console.error("Error adding goal:", err);
+      console.warn("Saved goal locally only");
     }
   };
 
   const handleDeleteGoal = async (id: string) => {
     if (confirm("¿Estás seguro de eliminar esta meta?")) {
+      const updatedGoals = goals.filter(g => g.id !== id);
+      setGoals(updatedGoals);
+      localStorage.setItem(`goals_${user.id}`, JSON.stringify(updatedGoals));
+
       try {
-        const { error } = await supabase
-          .from('goals')
-          .delete()
-          .match({ id });
-        if (error) throw error;
+        await supabase.from('goals').delete().match({ id });
       } catch (err) {
-        console.error("Error deleting goal:", err);
+        console.warn("Deleted goal locally only");
       }
     }
   };
@@ -428,16 +463,18 @@ export default function App() {
     const amount = prompt("Monto a sumar:");
     if (!amount) return;
 
+    const updatedGoals = goals.map(g => 
+      g.id === id ? { ...g, current: Math.min(g.target, g.current + parseFloat(amount)) } : g
+    );
+    setGoals(updatedGoals);
+    localStorage.setItem(`goals_${user.id}`, JSON.stringify(updatedGoals));
+
     try {
-      const { error } = await supabase
-        .from('goals')
-        .update({
-          current: Math.min(goal.target, goal.current + parseFloat(amount))
-        })
-        .match({ id });
-      if (error) throw error;
+      await supabase.from('goals').update({
+        current: Math.min(goal.target, goal.current + parseFloat(amount))
+      }).match({ id });
     } catch (err) {
-      console.error("Error updating goal:", err);
+      console.warn("Updated goal locally only");
     }
   };
 
