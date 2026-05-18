@@ -1,8 +1,10 @@
 {
-  "apiKey": "PASTE_API_KEY_HERE",
-  "authDomain": "PLACEHOLDER",
-  "projectId": "PLACEHOLDER",
-  "storageBucket": "PLACEHOLDER",
-  "messagingSenderId": "PLACEHOLDER",
-  "appId": "PLACEHOLDER"
+  "projectId": "geometric-handler-mh7sp",
+  "appId": "1:599177469237:web:a1242a9e856a276543807c",
+  "apiKey": "AIzaSyCVqEGQlD0JhtlrZTMSI9rmNQ7YJ9BBxbE",
+  "authDomain": "geometric-handler-mh7sp.firebaseapp.com",
+  "firestoreDatabaseId": "ai-studio-d86a39b5-dde7-49fc-989e-86692ab33951",
+  "storageBucket": "geometric-handler-mh7sp.firebasestorage.app",
+  "messagingSenderId": "599177469237",
+  "measurementId": ""
 }

@@ -1,6 +1,6 @@
 {
-  "name": "MoneyUp",
-  "description": "A modern financial assistant for young people with AI-powered insights and expense tracking.",
+  "name": "MoneyUp - Diego",
+  "description": "Tu asistente financiero inteligente. Gestiona tus gastos, establece metas de ahorro y recibe consejos personalizados de IA.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
