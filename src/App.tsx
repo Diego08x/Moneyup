@@ -165,18 +165,20 @@ export default function App() {
   const [newDesc, setNewDesc] = useState('');
 
   useEffect(() => {
-    // Bypass login immediately for guest access as requested
-    const mockUser: any = {
-      uid: 'invitado_123',
-      displayName: 'Invitado',
-      email: 'invitado@moneyup.ai',
-      photoURL: 'https://cdn-icons-png.flaticon.com/512/149/149071.png'
-    };
-    setUser(mockUser);
-    setLoading(false);
+    // Listen to Supabase auth changes
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        setUser(session.user as any);
+      }
+      setLoading(false);
+    });
 
-    // If there's an actual firebase login, we'll use it
-    // But since the user wants to bypass it for now, we leave the mock user as default
+    const { data: { subscription } } = supabase.auth.onAuthStateChanged((_event, session) => {
+      setUser(session?.user as any || null);
+      setLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   useEffect(() => {
@@ -548,9 +550,14 @@ export default function App() {
                               Mi Actividad
                             </button>
                             <button 
-                              onClick={() => {
-                                logout();
-                                setIsProfileMenuOpen(false);
+                              onClick={async () => {
+                                try {
+                                  await supabase.auth.signOut();
+                                  setIsProfileMenuOpen(false);
+                                  setUser(null);
+                                } catch (err) {
+                                  console.error("Error signing out:", err);
+                                }
                               }}
                               className="w-full flex items-center gap-3 px-3 py-2 text-xs text-rose-400 hover:bg-rose-500/10 rounded-xl transition-colors font-bold"
                             >

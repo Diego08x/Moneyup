@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion } from 'motion/react';
 import { LogIn, TrendingUp } from 'lucide-react';
-import { signInWithGoogle } from '../lib/firebase';
+import { signInWithGoogle } from '../lib/supabase';
 
 interface LoginProps {
   onLoginSuccess?: () => void;
