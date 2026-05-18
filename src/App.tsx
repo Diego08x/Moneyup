@@ -28,22 +28,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
-import { 
-  auth, 
-  db, 
-  onAuthStateChanged, 
-  collection, 
-  addDoc, 
-  onSnapshot, 
-  query, 
-  where, 
-  orderBy, 
-  updateDoc, 
-  deleteDoc, 
-  doc, 
-  logout,
-  User
-} from './lib/firebase';
+import { supabase } from './lib/supabase';
 import { Login } from './components/Login';
 
 // --- Utils ---
@@ -190,13 +175,8 @@ export default function App() {
     setUser(mockUser);
     setLoading(false);
 
-    // Still listen to auth changes in case they eventually log in
-    const unsubscribe = onAuthStateChanged(auth, (u) => {
-      if (u) {
-        setUser(u);
-      }
-    });
-    return () => unsubscribe();
+    // If there's an actual firebase login, we'll use it
+    // But since the user wants to bypass it for now, we leave the mock user as default
   }, []);
 
   useEffect(() => {
@@ -205,18 +185,32 @@ export default function App() {
       return;
     }
 
-    const q = query(
-      collection(db, 'transactions'),
-      where('userId', '==', user.uid),
-      orderBy('date', 'desc')
-    );
+    const fetchTransactions = async () => {
+      const { data, error } = await supabase
+        .from('transactions')
+        .select('*')
+        .eq('userId', user.uid)
+        .order('date', { ascending: false });
+      
+      if (data) setTransactions(data);
+      if (error) console.error("Error fetching transactions:", error);
+    };
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const docs = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Transaction));
-      setTransactions(docs);
-    });
+    fetchTransactions();
 
-    return () => unsubscribe();
+    // Set up real-time subscription
+    const channel = supabase
+      .channel('schema-db-changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'transactions', filter: `userId=eq.${user.uid}` },
+        () => fetchTransactions()
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [user]);
 
   useEffect(() => {
@@ -225,17 +219,30 @@ export default function App() {
       return;
     }
 
-    const q = query(
-      collection(db, 'goals'),
-      where('userId', '==', user.uid)
-    );
+    const fetchGoals = async () => {
+      const { data, error } = await supabase
+        .from('goals')
+        .select('*')
+        .eq('userId', user.uid);
+      
+      if (data) setGoals(data);
+      if (error) console.error("Error fetching goals:", error);
+    };
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const docs = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Goal));
-      setGoals(docs);
-    });
+    fetchGoals();
 
-    return () => unsubscribe();
+    const channel = supabase
+      .channel('goals-changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'goals', filter: `userId=eq.${user.uid}` },
+        () => fetchGoals()
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [user]);
 
   const totals = transactions.reduce((acc, t) => {
@@ -274,15 +281,19 @@ export default function App() {
         description: newDesc,
         date: new Date().toISOString(),
         userId: user.uid,
-        id: crypto.randomUUID(), // For local and consistency
       };
 
-      await addDoc(collection(db, 'transactions'), transactionData);
+      const { error } = await supabase
+        .from('transactions')
+        .insert([transactionData]);
+
+      if (error) throw error;
+      
       setIsModalOpen(false);
       resetForm();
     } catch (err) {
       console.error("Error adding transaction:", err);
-      alert("Error al guardar la transacción.");
+      alert("Error al guardar la transacción. Revisa la consola para más detalles.");
     }
   };
 
@@ -338,14 +349,16 @@ export default function App() {
     if (!name || !target) return;
 
     try {
-      await addDoc(collection(db, 'goals'), {
-        id: crypto.randomUUID(),
-        name,
-        target: parseFloat(target),
-        current: 0,
-        color: 'from-indigo-500 to-purple-500',
-        userId: user.uid
-      });
+      const { error } = await supabase
+        .from('goals')
+        .insert([{
+          name,
+          target: parseFloat(target),
+          current: 0,
+          color: 'from-indigo-500 to-purple-500',
+          userId: user.uid
+        }]);
+      if (error) throw error;
     } catch (err) {
       console.error("Error adding goal:", err);
     }
@@ -354,7 +367,11 @@ export default function App() {
   const handleDeleteGoal = async (id: string) => {
     if (confirm("¿Estás seguro de eliminar esta meta?")) {
       try {
-        await deleteDoc(doc(db, 'goals', id));
+        const { error } = await supabase
+          .from('goals')
+          .delete()
+          .match({ id });
+        if (error) throw error;
       } catch (err) {
         console.error("Error deleting goal:", err);
       }
@@ -366,9 +383,13 @@ export default function App() {
     if (!amount) return;
 
     try {
-      await updateDoc(doc(db, 'goals', id), {
-        current: Math.min(goal.target, goal.current + parseFloat(amount))
-      });
+      const { error } = await supabase
+        .from('goals')
+        .update({
+          current: Math.min(goal.target, goal.current + parseFloat(amount))
+        })
+        .match({ id });
+      if (error) throw error;
     } catch (err) {
       console.error("Error updating goal:", err);
     }
@@ -840,7 +861,11 @@ export default function App() {
                              <button 
                               onClick={async () => {
                                 try {
-                                  await deleteDoc(doc(db, 'transactions', t.id));
+                                  const { error } = await supabase
+                                    .from('transactions')
+                                    .delete()
+                                    .match({ id: t.id });
+                                  if (error) throw error;
                                 } catch (err) {
                                   console.error("Error deleting transaction:", err);
                                 }
