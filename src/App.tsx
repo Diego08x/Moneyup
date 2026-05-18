@@ -20,7 +20,10 @@ import {
   CartesianGrid, 
   Tooltip, 
   ResponsiveContainer,
-  Cell
+  Cell,
+  PieChart as RePieChart,
+  Pie,
+  Legend
 } from 'recharts';
 import ReactMarkdown from 'react-markdown';
 
@@ -495,6 +498,20 @@ export default function App() {
     { name: 'Gastos', value: totals.expense, color: '#f43f5e' },
   ];
 
+  // Pie Chart Data - Expenses by Category
+  const expenseByCategory = transactions
+    .filter(t => t.type === 'expense')
+    .reduce((acc, t) => {
+      acc[t.category] = (acc[t.category] || 0) + t.amount;
+      return acc;
+    }, {} as Record<string, number>);
+
+  const pieData = Object.entries(expenseByCategory).map(([name, value]) => ({
+    name,
+    value,
+    color: CATEGORY_COLORS[name] || '#94a3b8'
+  })).sort((a, b) => b.value - a.value);
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-indigo-500/30">
       {/* Header */}
@@ -682,6 +699,58 @@ export default function App() {
                         </Bar>
                       </BarChart>
                     </ResponsiveContainer>
+                  </Card>
+
+                  <Card className="h-[450px]">
+                    <div className="flex items-center justify-between mb-8">
+                      <div>
+                        <h3 className="text-2xl font-bold text-white">Distribución de Gastos</h3>
+                        <p className="text-sm text-slate-500">¿En qué se va tu dinero realmente?</p>
+                      </div>
+                      <PieChartIcon className="text-indigo-400" size={24} />
+                    </div>
+                    {pieData.length > 0 ? (
+                      <ResponsiveContainer width="100%" height="80%">
+                        <RePieChart>
+                          <Pie
+                            data={pieData}
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={80}
+                            outerRadius={120}
+                            paddingAngle={5}
+                            dataKey="value"
+                            stroke="none"
+                          >
+                            {pieData.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={entry.color} />
+                            ))}
+                          </Pie>
+                          <Tooltip 
+                            contentStyle={{ 
+                              backgroundColor: '#0f172a',
+                              borderRadius: '16px', 
+                              border: '1px solid #1e293b', 
+                              color: '#fff'
+                            }}
+                            formatter={(value: number) => `$${value.toLocaleString('es-CL')}`}
+                          />
+                          <Legend 
+                            verticalAlign="bottom" 
+                            height={36} 
+                            iconType="circle"
+                            formatter={(value) => <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{value}</span>}
+                          />
+                        </RePieChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <div className="h-full flex flex-col items-center justify-center text-slate-500 gap-4">
+                        <div className="w-16 h-16 bg-slate-800 rounded-full flex items-center justify-center">
+                          <History size={32} />
+                        </div>
+                        <p className="text-sm">No hay suficientes gastos para mostrar el gráfico</p>
+                      </div>
+                    )}
                   </Card>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
