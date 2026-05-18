@@ -22,11 +22,11 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
       let message = "Error al iniciar sesión. Por favor intenta de nuevo.";
       
       if (err.code === 'auth/popup-blocked') {
-        message = "El navegador bloqueó la ventana de inicio de sesión. Por favor activa los pop-ups.";
+        message = "El navegador bloqueó la ventana de inicio de sesión. Prueba abrir la aplicación en una pestaña nueva.";
       } else if (err.code === 'auth/cancelled-popup-request') {
         message = "La ventana de inicio de sesión se cerró. Inténtalo de nuevo.";
       } else if (err.code === 'auth/unauthorized-domain') {
-        message = "Este dominio no está autorizado en Firebase. Añade este dominio en la consola de Firebase.";
+        message = "Dominio no autorizado. Debes añadir este dominio en la consola de Firebase (Autenticación > Ajustes > Dominios autorizados).";
       } else if (err.message) {
         message = `Error: ${err.message}`;
       }
@@ -35,6 +35,10 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const openInNewTab = () => {
+    window.open(window.location.href, '_blank');
   };
 
   return (
@@ -57,22 +61,29 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
             Money<span className="text-indigo-400">Up</span>
           </h1>
           <p className="text-slate-500 font-medium text-center">
-            Toma el control total de tus finanzas con el poder de la IA.
+            Dashboard Financiero Pro
           </p>
         </div>
 
         <div className="bg-slate-900 border border-slate-800 rounded-[2.5rem] p-10 shadow-2xl space-y-8 relative overflow-hidden">
           <div className="relative z-10">
-            <h2 className="text-2xl font-bold text-center mb-2">Bienvenido de nuevo</h2>
-            <p className="text-slate-500 text-sm text-center mb-8">Inicia sesión para sincronizar tus datos en todos tus dispositivos.</p>
+            <h2 className="text-2xl font-bold text-center mb-2">Bienvenido</h2>
+            <p className="text-slate-500 text-sm text-center mb-8">Accede para sincronizar tus finanzas.</p>
             
             {error && (
               <motion.div 
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
-                className="bg-rose-500/10 border border-rose-500/20 text-rose-400 p-4 rounded-2xl text-xs font-bold mb-6 text-center"
+                className="bg-rose-500/10 border border-rose-500/20 text-rose-400 p-4 rounded-2xl text-xs font-bold mb-6 text-left"
               >
+                <div className="mb-2 font-black">UPS! ALGO SALIÓ MAL</div>
                 {error}
+                <button 
+                  onClick={openInNewTab}
+                  className="mt-3 block w-full bg-rose-500 text-white py-2 rounded-xl text-[10px] hover:bg-rose-600 transition-colors"
+                >
+                  ABRIR EN NUEVA PESTAÑA
+                </button>
               </motion.div>
             )}
 
@@ -90,7 +101,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
               ) : (
                 <>
                   <img src="https://www.google.com/favicon.ico" alt="Google" className="w-5 h-5" />
-                  Continuar con Google
+                  ENTRAR CON GOOGLE
                 </>
               )}
             </button>
