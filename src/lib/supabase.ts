@@ -3,19 +3,13 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-const isConfigValid = typeof supabaseUrl === 'string' && supabaseUrl.startsWith('http');
-
-if (!isConfigValid) {
-  console.warn('Supabase URL is missing or invalid. Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in your project settings. Using your provided credentials as fallback.');
+if (!supabaseUrl || !supabaseAnonKey) {
+  console.warn('Supabase credentials are missing. Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in your project settings.');
 }
 
-// Credenciales proporcionadas por el usuario:
-const DEFAULT_URL = 'https://oaosigts6r55ds1aexj1ia.supabase.co';
-const DEFAULT_KEY = 'sb_publishable_oaOSIgTS6R55dS1AExJ1IA_nDXkpe8e';
-
 export const supabase = createClient(
-  isConfigValid ? supabaseUrl : DEFAULT_URL,
-  supabaseAnonKey || DEFAULT_KEY,
+  supabaseUrl || 'https://placeholder.supabase.co',
+  supabaseAnonKey || 'placeholder',
   {
     auth: {
       persistSession: true,
