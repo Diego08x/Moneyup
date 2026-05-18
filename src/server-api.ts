@@ -100,7 +100,7 @@ app.post("/api/chat", async (req, res) => {
       {
         role: "user",
         parts: [{ text: `Eres "MoneyUp Advisor", un asistente financiero experto.
-        Usuario: ${userProfile.displayName || 'Mateo'}
+        Usuario: ${userProfile.displayName || 'Diego'}
         Balance: $${userProfile.walletBalance}
         Últimas transacciones: ${JSON.stringify(transactions.slice(0, 5))}
         Responde de forma breve, motivadora y en español. Usa emojis. 👋` }]

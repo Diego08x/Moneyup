@@ -9,6 +9,7 @@ import {
   X, 
   ArrowUpRight, 
   ArrowDownRight,
+  LogOut,
   PieChart as PieChartIcon
 } from 'lucide-react';
 import { 
@@ -26,6 +27,24 @@ import ReactMarkdown from 'react-markdown';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+
+import { 
+  auth, 
+  db, 
+  onAuthStateChanged, 
+  collection, 
+  addDoc, 
+  onSnapshot, 
+  query, 
+  where, 
+  orderBy, 
+  updateDoc, 
+  deleteDoc, 
+  doc, 
+  logout,
+  User
+} from './lib/firebase';
+import { Login } from './components/Login';
 
 // --- Utils ---
 function cn(...inputs: ClassValue[]) {
@@ -136,17 +155,12 @@ const StatCard = ({ title, amount, type, icon: Icon, id }: { title: string, amou
 };
 
 export default function App() {
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'dashboard' | 'metas' | 'movimientos' | 'aprende'>('dashboard');
   
-  const [transactions, setTransactions] = useState<Transaction[]>(() => {
-    const saved = localStorage.getItem('moneyup_transactions');
-    return saved ? JSON.parse(saved) : [];
-  });
-
-  const [goals, setGoals] = useState<Goal[]>(() => {
-    const saved = localStorage.getItem('moneyup_goals');
-    return saved ? JSON.parse(saved) : [];
-  });
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [goals, setGoals] = useState<Goal[]>([]);
 
   const [filterType, setFilterType] = useState<'all' | 'income' | 'expense'>('all');
 
@@ -165,12 +179,51 @@ export default function App() {
   const [newDesc, setNewDesc] = useState('');
 
   useEffect(() => {
-    localStorage.setItem('moneyup_transactions', JSON.stringify(transactions));
-  }, [transactions]);
+    const unsubscribe = onAuthStateChanged(auth, (u) => {
+      setUser(u);
+      setLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
 
   useEffect(() => {
-    localStorage.setItem('moneyup_goals', JSON.stringify(goals));
-  }, [goals]);
+    if (!user) {
+      setTransactions([]);
+      return;
+    }
+
+    const q = query(
+      collection(db, 'transactions'),
+      where('userId', '==', user.uid),
+      orderBy('date', 'desc')
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const docs = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Transaction));
+      setTransactions(docs);
+    });
+
+    return () => unsubscribe();
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) {
+      setGoals([]);
+      return;
+    }
+
+    const q = query(
+      collection(db, 'goals'),
+      where('userId', '==', user.uid)
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const docs = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Goal));
+      setGoals(docs);
+    });
+
+    return () => unsubscribe();
+  }, [user]);
 
   const totals = transactions.reduce((acc, t) => {
     if (t.type === 'income') acc.income += t.amount;
@@ -180,22 +233,44 @@ export default function App() {
 
   const balance = totals.income - totals.expense;
 
-  const handleAddTransaction = (e: React.FormEvent) => {
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+        <motion.div 
+          animate={{ rotate: 360 }}
+          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+          className="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full"
+        />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Login />;
+  }
+
+  const handleAddTransaction = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newAmount || !newCategory) return;
+    if (!newAmount || !newCategory || !user) return;
 
-    const transaction: Transaction = {
-      id: crypto.randomUUID(),
-      type: newType,
-      amount: parseFloat(newAmount),
-      category: newCategory,
-      description: newDesc,
-      date: new Date().toISOString(),
-    };
+    try {
+      const transactionData = {
+        type: newType,
+        amount: parseFloat(newAmount),
+        category: newCategory,
+        description: newDesc,
+        date: new Date().toISOString(),
+        userId: user.uid,
+        id: crypto.randomUUID(), // For local and consistency
+      };
 
-    setTransactions([transaction, ...transactions]);
-    setIsModalOpen(false);
-    resetForm();
+      await addDoc(collection(db, 'transactions'), transactionData);
+      setIsModalOpen(false);
+      resetForm();
+    } catch (err) {
+      console.error("Error adding transaction:", err);
+      alert("Error al guardar la transacción.");
+    }
   };
 
   const resetForm = () => {
@@ -206,6 +281,7 @@ export default function App() {
   };
 
   const getAiAdvice = async () => {
+    if (!user) return;
     setIsAskingAi(true);
     setAiAdvice(null);
     try {
@@ -218,7 +294,7 @@ export default function App() {
         signal: controller.signal,
         body: JSON.stringify({ 
           transactions: transactions.slice(0, 10),
-          userProfile: { displayName: 'User', walletBalance: balance }
+          userProfile: { displayName: user.displayName || 'Diego', walletBalance: balance }
         }),
       });
       
@@ -242,37 +318,47 @@ export default function App() {
     }
   };
 
-  const handleAddGoal = () => {
+  const handleAddGoal = async () => {
+    if (!user) return;
     const name = prompt("Nombre de la meta:");
     const target = prompt("Monto objetivo:");
     if (!name || !target) return;
 
-    const newGoal: Goal = {
-      id: crypto.randomUUID(),
-      name,
-      target: parseFloat(target),
-      current: 0,
-      color: 'from-indigo-500 to-purple-500'
-    };
-    setGoals([...goals, newGoal]);
-  };
-
-  const handleDeleteGoal = (id: string) => {
-    if (confirm("¿Estás seguro de eliminar esta meta?")) {
-      setGoals(goals.filter(g => g.id !== id));
+    try {
+      await addDoc(collection(db, 'goals'), {
+        id: crypto.randomUUID(),
+        name,
+        target: parseFloat(target),
+        current: 0,
+        color: 'from-indigo-500 to-purple-500',
+        userId: user.uid
+      });
+    } catch (err) {
+      console.error("Error adding goal:", err);
     }
   };
 
-  const handleUpdateGoal = (id: string) => {
+  const handleDeleteGoal = async (id: string) => {
+    if (confirm("¿Estás seguro de eliminar esta meta?")) {
+      try {
+        await deleteDoc(doc(db, 'goals', id));
+      } catch (err) {
+        console.error("Error deleting goal:", err);
+      }
+    }
+  };
+
+  const handleUpdateGoal = async (id: string, goal: Goal) => {
     const amount = prompt("Monto a sumar:");
     if (!amount) return;
 
-    setGoals(goals.map(g => {
-      if (g.id === id) {
-        return { ...g, current: Math.min(g.target, g.current + parseFloat(amount)) };
-      }
-      return g;
-    }));
+    try {
+      await updateDoc(doc(db, 'goals', id), {
+        current: Math.min(goal.target, goal.current + parseFloat(amount))
+      });
+    } catch (err) {
+      console.error("Error updating goal:", err);
+    }
   };
 
   const filteredTransactions = transactions.filter(t => {
@@ -299,7 +385,7 @@ export default function App() {
         signal: controller.signal,
         body: JSON.stringify({
           messages: [...chatMessages, newUserMsg],
-          userProfile: { displayName: 'Mateo', walletBalance: balance },
+          userProfile: { displayName: user?.displayName || 'Diego', walletBalance: balance },
           transactions: transactions.slice(0, 10)
         })
       });
@@ -373,7 +459,26 @@ export default function App() {
               <Plus size={18} />
               <span className="hidden sm:inline">Nuevo Movimiento</span>
             </button>
-            <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 border border-slate-800 hidden sm:block cursor-pointer" onClick={() => alert("¡Hola, Mateo! Estás en la versión Pro.")}></div>
+            <div className="flex items-center gap-3 pl-4 border-l border-slate-800">
+              <div className="hidden sm:block text-right">
+                <p className="text-[10px] font-bold text-white uppercase tracking-wider">{user.displayName || 'Diego'}</p>
+                <p className="text-[8px] text-slate-500 font-bold">USUARIO PRO</p>
+              </div>
+              {user.photoURL ? (
+                <img src={user.photoURL} alt="User" className="w-10 h-10 rounded-full border border-slate-800 cursor-pointer" onClick={() => logout()} />
+              ) : (
+                <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 border border-slate-800 flex items-center justify-center text-white font-bold cursor-pointer" onClick={() => logout()}>
+                  {user.displayName?.[0] || 'D'}
+                </div>
+              )}
+              <button 
+                onClick={() => logout()}
+                className="p-2 text-slate-500 hover:text-white transition-colors"
+                title="Cerrar sesión"
+              >
+                <LogOut size={16} />
+              </button>
+            </div>
           </div>
         </div>
       </header>
@@ -595,7 +700,7 @@ export default function App() {
                        />
                     </div>
                     <button 
-                      onClick={() => handleUpdateGoal(goal.id)}
+                      onClick={() => handleUpdateGoal(goal.id, goal)}
                       className="w-full bg-indigo-600/10 text-indigo-400 py-3 rounded-xl font-bold text-sm hover:bg-indigo-600 hover:text-white transition-all border border-indigo-500/20"
                     >
                       Sumar Ahorro
@@ -665,7 +770,13 @@ export default function App() {
                           </td>
                           <td className="py-4 text-right">
                              <button 
-                              onClick={() => setTransactions(transactions.filter(prev => prev.id !== t.id))}
+                              onClick={async () => {
+                                try {
+                                  await deleteDoc(doc(db, 'transactions', t.id));
+                                } catch (err) {
+                                  console.error("Error deleting transaction:", err);
+                                }
+                              }}
                               className="p-2 opacity-0 group-hover:opacity-100 hover:text-rose-500 transition-all"
                              >
                                <X size={14} />

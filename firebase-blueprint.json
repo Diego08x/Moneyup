@@ -1,0 +1,43 @@
+{
+  "entities": {
+    "Transaction": {
+      "title": "Transaction",
+      "description": "Financial transaction record",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique ID" },
+        "type": { "type": "string", "enum": ["income", "expense"] },
+        "category": { "type": "string" },
+        "amount": { "type": "number" },
+        "date": { "type": "string", "format": "date-time" },
+        "description": { "type": "string" },
+        "userId": { "type": "string", "description": "Owner UID" }
+      },
+      "required": ["id", "type", "category", "amount", "date", "userId"]
+    },
+    "Goal": {
+      "title": "Goal",
+      "description": "Savings goal",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "target": { "type": "number" },
+        "current": { "type": "number" },
+        "color": { "type": "string" },
+        "userId": { "type": "string" }
+      },
+      "required": ["id", "name", "target", "current", "userId"]
+    }
+  },
+  "firestore": {
+    "transactions": {
+      "schema": "Transaction",
+      "description": "User transactions collection"
+    },
+    "goals": {
+      "schema": "Goal",
+      "description": "User goals collection"
+    }
+  }
+}
