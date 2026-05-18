@@ -49,15 +49,52 @@ app.post("/api/advisor", async (req, res) => {
       6. Responde en Español.
     `;
 
-    const result = await ai.models.generateContent({
+    const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
       contents: prompt,
     });
 
-    res.json({ advice: result.text });
+    res.json({ advice: response.text });
   } catch (error) {
     console.error("AI Advisor Error:", error);
     res.status(500).json({ error: "Failed to get advice" });
+  }
+});
+
+// General Chat endpoint
+app.post("/api/chat", async (req, res) => {
+  try {
+    const { messages, userProfile, transactions } = req.body;
+
+    const lastMessage = messages[messages.length - 1].text;
+    
+    // Using a system instruction and history to give context
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: [
+        {
+          role: "user",
+          parts: [{ text: `Eres "MoneyUp Advisor", un asistente financiero personal amigable. 
+          Usuario: ${userProfile.displayName || 'Usuario'}
+          Balance: $${userProfile.walletBalance}
+          Recientes: ${JSON.stringify(transactions.slice(0, 3))}
+          Responde de forma breve y motivadora.` }]
+        },
+        {
+          role: "model",
+          parts: [{ text: "¡Entendido! Soy tu MoneyUp Advisor. ¿En qué te puedo ayudar?" }]
+        },
+        ...messages.map((m: any) => ({
+          role: m.role === 'user' ? 'user' : 'model',
+          parts: [{ text: m.text }]
+        }))
+      ]
+    });
+
+    res.json({ text: response.text });
+  } catch (error) {
+    console.error("Chat Error:", error);
+    res.status(500).json({ error: "Failed to chat" });
   }
 });
 
