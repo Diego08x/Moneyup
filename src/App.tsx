@@ -145,10 +145,7 @@ export default function App() {
 
   const [goals, setGoals] = useState<Goal[]>(() => {
     const saved = localStorage.getItem('moneyup_goals');
-    return saved ? JSON.parse(saved) : [
-      { id: '1', name: 'Fondo de Emergencia', target: 1000000, current: 750000, color: 'from-indigo-500 to-cyan-400' },
-      { id: '2', name: 'Viaje a Cancún', target: 2000000, current: 640000, color: 'from-purple-500 to-pink-500' }
-    ];
+    return saved ? JSON.parse(saved) : [];
   });
 
   const [filterType, setFilterType] = useState<'all' | 'income' | 'expense'>('all');
@@ -463,6 +460,11 @@ export default function App() {
                             </div>
                           </div>
                         ))}
+                        {goals.length === 0 && (
+                          <div className="py-10 text-center text-slate-500 text-xs border border-dashed border-slate-800 rounded-2xl">
+                            No hay metas activas.
+                          </div>
+                        )}
                       </div>
                     </Card>
 
@@ -600,6 +602,19 @@ export default function App() {
                     </button>
                   </Card>
                 ))}
+                
+                {goals.length === 0 && (
+                  <div 
+                    onClick={handleAddGoal}
+                    className="md:col-span-2 lg:col-span-3 py-20 border-2 border-dashed border-slate-800 rounded-[2rem] flex flex-col items-center justify-center text-slate-500 hover:border-indigo-500/30 hover:text-slate-400 transition-all cursor-pointer group"
+                  >
+                    <div className="w-16 h-16 bg-slate-900 rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                      <Plus size={32} />
+                    </div>
+                    <p className="font-bold">No tienes metas aún</p>
+                    <p className="text-sm">Haz clic aquí para crear tu primera meta de ahorro</p>
+                  </div>
+                )}
               </div>
             </motion.div>
           )}
