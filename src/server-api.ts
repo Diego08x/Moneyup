@@ -60,6 +60,7 @@ app.post("/api/advisor", async (req, res) => {
 
       CONTEXTO DEL USUARIO:
       - Nombre: ${userProfile?.displayName || 'Usuario'}
+      - Nivel actual: ${userProfile?.level || 'Novato'}
       - Balance Actual: $${userProfile?.walletBalance}
       - Transacciones Recientes:
       ${transactionsContext}

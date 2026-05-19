@@ -322,6 +322,49 @@ export default function App() {
 
   const balance = totals.income - totals.expense;
 
+  // --- Level System Logic ---
+  const txCount = transactions.length;
+  
+  const getLevelInfo = (bal: number, count: number) => {
+    if (bal >= 2000000 && count >= 15) {
+      return { 
+        name: 'Inversionista', 
+        color: 'from-amber-400 to-orange-500', 
+        bg: 'bg-amber-500/10',
+        textColor: 'text-amber-400',
+        icon: '👑',
+        next: null,
+        progress: 100
+      };
+    }
+    if (bal >= 500000 && count >= 5) {
+      const balProgress = Math.min(100, (bal / 2000000) * 100);
+      const txProgress = Math.min(100, (count / 15) * 100);
+      return { 
+        name: 'Organizado', 
+        color: 'from-emerald-400 to-teal-500',
+        bg: 'bg-emerald-500/10',
+        textColor: 'text-emerald-400',
+        icon: '💎',
+        next: 'Inversionista',
+        progress: (balProgress + txProgress) / 2
+      };
+    }
+    const balProgress = Math.min(100, (bal / 500000) * 100);
+    const txProgress = Math.min(100, (count / 5) * 100);
+    return { 
+      name: 'Novato', 
+      color: 'from-indigo-400 to-purple-500',
+      bg: 'bg-indigo-500/10',
+      textColor: 'text-indigo-400',
+      icon: '🌱',
+      next: 'Organizado',
+      progress: (balProgress + txProgress) / 2
+    };
+  };
+
+  const level = getLevelInfo(balance, txCount);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center gap-4">
@@ -395,7 +438,11 @@ export default function App() {
         signal: controller.signal,
         body: JSON.stringify({ 
           transactions: transactions.slice(0, 10),
-          userProfile: { displayName: (user as any).user_metadata?.full_name || user.email || 'Usuario', walletBalance: balance }
+          userProfile: { 
+            displayName: (user as any).user_metadata?.full_name || user.email || 'Usuario', 
+            walletBalance: balance,
+            level: level.name 
+          }
         }),
       });
       
@@ -593,7 +640,11 @@ export default function App() {
             <div className="flex items-center gap-3 pl-4 border-l border-slate-800 relative">
               <div className="hidden sm:block text-right">
                 <p className="text-[10px] font-bold text-white uppercase tracking-wider">{(user as any).user_metadata?.full_name || user.email?.split('@')[0] || 'Invitado'}</p>
-                <p className="text-[8px] text-slate-500 font-bold">USUARIO PRO</p>
+                <div className="flex items-center justify-end gap-1">
+                  <span className={cn("text-[8px] font-black uppercase tracking-tighter px-1 rounded-sm", level.bg, level.textColor)}>
+                    {level.name}
+                  </span>
+                </div>
               </div>
               
               <div className="relative">
@@ -683,7 +734,65 @@ export default function App() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
             >
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+                {/* Level Card */}
+                <motion.div 
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  className="lg:col-span-3"
+                >
+                  <Card className="p-0 overflow-hidden bg-slate-900 border-slate-800 shadow-2xl relative">
+                    <div className="flex flex-col md:flex-row items-center gap-6 p-6">
+                      <div className={cn("w-20 h-20 rounded-3xl flex items-center justify-center text-4xl shadow-2xl shrink-0", level.bg)}>
+                        {level.icon}
+                      </div>
+                      <div className="flex-1 text-center md:text-left min-w-0">
+                        <div className="flex flex-col md:flex-row items-center gap-3 mb-1">
+                          <h2 className="text-2xl font-black text-white italic">Rango: <span className="text-indigo-400">{level.name.toUpperCase()}</span></h2>
+                          <div className="flex items-center gap-2">
+                             <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-slate-700 whitespace-nowrap">
+                               {txCount} Movimientos
+                            </span>
+                          </div>
+                        </div>
+                        <p className="text-slate-400 text-xs mb-4 max-w-lg">
+                          {level.next 
+                            ? `Te falta poco para alcanzar el rango ${level.next}. ¡Sigue registrando tus finanzas!` 
+                            : "¡Nivel Máximo! Eres un estratega financiero hecho y derecho. 🎉"}
+                        </p>
+                        <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden mb-1">
+                          <motion.div 
+                            initial={{ width: 0 }}
+                            animate={{ width: `${level.progress}%` }}
+                            transition={{ duration: 1.5, delay: 0.5, ease: "easeOut" }}
+                            className={cn("h-full bg-gradient-to-r shadow-[0_0_20px_rgba(79,70,229,0.3)]", level.color)}
+                          />
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">{level.progress.toFixed(0)}% Completado</span>
+                          {level.next && (
+                            <span className="text-[9px] font-black text-indigo-400/70 uppercase tracking-widest">Meta: {level.next}</span>
+                          )}
+                        </div>
+                      </div>
+                      <button 
+                        onClick={getAiAdvice}
+                        disabled={isAskingAi}
+                        className="w-full md:w-auto px-6 py-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl font-black text-xs flex items-center justify-center gap-3 transition-all active:scale-95 disabled:opacity-50 shrink-0"
+                      >
+                        {isAskingAi ? (
+                          <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1 }}>
+                            <BrainCircuit size={18} />
+                          </motion.div>
+                        ) : (
+                          <BrainCircuit size={18} />
+                        )}
+                        ANÁLISIS IA
+                      </button>
+                    </div>
+                  </Card>
+                </motion.div>
+
                 <StatCard id="balance-card" title="Balance Total" amount={balance} type="balance" icon={Wallet} />
                 <StatCard id="income-card" title="Ingresos Semanales" amount={totals.income} type="income" icon={ArrowUpRight} />
                 <StatCard id="expense-card" title="Gastos Semanales" amount={totals.expense} type="expense" icon={ArrowDownRight} />
